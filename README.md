@@ -15,4 +15,4 @@ original AlexNet and resnet18 copied from source code of pytorch
 altered version of AlexNet: NaiveNet and AlanNet  
 altered version of resnet18: rresnet18 and rrresnet18
 # overview
-![alt text](https://raw.github/Ela-Boska/Image-Classification/master/statistic/overview.jpg)
+![alt text](https://github.com/Ela-Boska/Image-Classification/blob/master/statistic/overview.jpg)
