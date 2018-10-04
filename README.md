@@ -18,5 +18,5 @@ altered version of resnet18: rresnet18 and rrresnet18
 ![alt text](https://github.com/Ela-Boska/Image-Classification/blob/master/statistic/overview_nolegend.jpg)
 ![alt text](https://github.com/Ela-Boska/Image-Classification/blob/master/statistic/overview_legend.jpg)
 # training loss
-![alt text](https://github.com/Ela-Boska/Image-Classification/blob/master/statistic/traning_loss_nolegend.png)
-![alt text](https://github.com/Ela-Boska/Image-Classification/blob/master/statistic/traning_loss_legend.png)
+![alt text](https://github.com/Ela-Boska/Image-Classification/blob/master/statistic/training_loss_nolegend.png)
+![alt text](https://github.com/Ela-Boska/Image-Classification/blob/master/statistic/training_loss_legend.png)
