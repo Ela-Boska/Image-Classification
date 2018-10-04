@@ -5,8 +5,8 @@ python main.py #cfgfile#
 # environment
 python3 pytorch 0.4.0
 # preprocess
-random crop
-random flip
+random crop  
+random flip  
 normalize based on std and mean
 # features
 use tensorboardX to record loss and precision during training.
