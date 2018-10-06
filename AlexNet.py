@@ -11,19 +11,23 @@ transform_test = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
 
-def show_sample(model,dataset,use_cuda=False):
-    image,label = dataset[random.randint(0,len(dataset)-1)]
-    img = transform_test(image)
-    img = img.view(1,*img.shape)
+def show_sample(model,dataset,num=1,use_cuda=False):
+    img = torch.zeros(num,3,32,32)
+    labels = [None] * num
+    image = [None] * num
+    for i in range(num):
+        image[i],labels[i] = dataset[random.randint(0,len(dataset)-1)]
+        img[i] = transform_test(image[i])
     if use_cuda:
         img = img.cuda()
     out = model(img)
-    class_id = out.argmax(-1).item()
-    name = dataset.names[class_id]
-    label = dataset.names[label]
-    print(name,label)
-    plt.imshow(image)
-    plt.show()
+    class_ids = out.argmax(-1)
+    names = [dataset.names[class_id] for class_id in class_ids ]
+    labels = [dataset.names[label] for label in labels] 
+    for i in range(num):
+        print('predicted:',names[i],'truth:',labels[i])
+        plt.imshow(image[i])
+        plt.show()
 
 def reorgan(inputs,scale=2):
     N,C,H,W = inputs.shape
@@ -188,9 +192,52 @@ class AlanNet(MYNet):
         return x
 
 
+class AlanNet_bn(MYNet):
+
+    def __init__(self,input_size=(3,32,32), num_classes=10):
+        super(AlanNet_bn, self).__init__()
+        self.epoch = 0
+        self.features = nn.Sequential(
+            nn.Conv2d(input_size[0], 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2,padding = 0),          #input/2
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),                 
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2,padding = 0),          #input/4
+            nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 512 ,kernel_size=2, stride=2),               #input/8
+            nn.BatchNorm2d(512)
+        )
+        self.classifier = nn.Sequential(
+            nn.Linear(512*input_size[1]*input_size[2]//64 , 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(inplace=True),
+            nn.Linear(512, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(inplace=True),
+            nn.Linear(128, num_classes)
+        )
+        self.initialize()
+
+    def forward(self, x):
+        x = self.features(x)
+        x = x.view(x.size(0), -1)
+        x = self.classifier(x)
+        return x
+
 class ResNet(MYNet):
 
-    def __init__(self, block, layers, num_classes=1000):
+    def __init__(self, block, layers, num_classes=10):
         self.inplanes = 64
         self.epoch = 0
         super(ResNet, self).__init__()
@@ -240,9 +287,121 @@ class ResNet(MYNet):
 
         return x
 
+class ResNet_hyper(MYNet):
+
+    def __init__(self, block, layers, num_classes=10):
+        self.inplanes = 64
+        self.epoch = 0
+        super(ResNet_hyper, self).__init__()
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1,   
+                               bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)# input/2
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)# input/4
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)# input/8     
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=1)     
+        self.fc = nn.Linear(512 * block.expansion*16, num_classes)
+
+        self.initialize()
+
+    def _make_layer(self, block, planes, blocks, stride=1):
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                nn.Conv2d(self.inplanes, planes * block.expansion,
+                          kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, stride, downsample))
+        self.inplanes = planes * block.expansion
+        for i in range(1, blocks):
+            layers.append(block(self.inplanes, planes))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+
+        return x
+
+class ResNet_mfc(MYNet):
+
+    def __init__(self, block, layers, num_classes=10,input_size=(3,32,32)):
+        self.inplanes = 64
+        self.epoch = 0
+        super(ResNet_mfc, self).__init__()
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1,   
+                               bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)     # input/2
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)     # input/4
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)     # input/8
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)     # input/16
+        self.fc = nn.Sequential(
+            nn.Linear(512*input_size[1]*input_size[2]//256 , 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(inplace=True),
+            nn.Linear(512, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(inplace=True),
+            nn.Linear(128, num_classes)
+        )
+
+        self.initialize()
+
+    def _make_layer(self, block, planes, blocks, stride=1):
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                nn.Conv2d(self.inplanes, planes * block.expansion,
+                          kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, stride, downsample))
+        self.inplanes = planes * block.expansion
+        for i in range(1, blocks):
+            layers.append(block(self.inplanes, planes))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+
+        return x
+
 class ResNet_original(MYNet):
 
-    def __init__(self, block, layers, num_classes=1000):
+    def __init__(self, block, layers, num_classes=10):
         self.inplanes = 64
         self.epoch = 0
         super(ResNet_original, self).__init__()
@@ -295,7 +454,7 @@ class ResNet_original(MYNet):
 
 class RRResNet(MYNet):
 
-    def __init__(self, block, layers, num_classes=1000):
+    def __init__(self, block, layers, num_classes=10):
         self.inplanes = 64
         self.epoch = 0
         super(RRResNet, self).__init__()
@@ -340,7 +499,6 @@ class RRResNet(MYNet):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
 
@@ -348,7 +506,7 @@ class RRResNet(MYNet):
 
 class RResNet(MYNet):
 
-    def __init__(self, block, layers, num_classes=1000):
+    def __init__(self, block, layers, num_classes=10):
         self.inplanes = 64
         self.epoch = 0
         super(RResNet, self).__init__()
@@ -514,6 +672,26 @@ def resnet18(pretrained=False, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
     model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
+    
+    return model
+
+def resnet18_mfc(pretrained=False, **kwargs):
+    """Constructs a ResNet-18 mfc model.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet_mfc(BasicBlock, [2, 2, 2, 2], **kwargs)
+    
+    return model
+
+def resnet18_hyper(pretrained=False, **kwargs):
+    """Constructs a ResNet-18 mfc model.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet_hyper(BasicBlock, [2, 2, 2, 2], **kwargs)
     
     return model
 

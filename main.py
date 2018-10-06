@@ -52,7 +52,7 @@ for cfgfile in cfgfiles:
     best_pre = 0
     if arguments['pretrained_weight']:
         model.load_weights(arguments['pretrained_weight'])
-        best_pre = model.evaluate(val_dataloader)
+        best_pre,_ = model.evaluate(val_dataloader)
         i = 0
         while  i<len(change_point) and change_point[i]<=model.epoch:
             i+=1
