@@ -1,7 +1,9 @@
 # Image-Classification
 mini project based on cifar-10
-# Main Usage
-python main.py #cfgfile#
+# Train a model
+python main.py cfgfile#1 cfgfile#2 ...
+# Visualize Predicted Samples
+python classify.py name_of_model(like resnet18,AlanNet_bn) weight_file number_of_samples 
 # environment
 python3 pytorch 0.4.0
 # preprocess
