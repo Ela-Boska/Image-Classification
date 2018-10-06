@@ -17,7 +17,7 @@ original AlexNet and resnet18 copied from source code of pytorch
 altered version of AlexNet: NaiveNet and AlanNet  
 altered version of resnet18: rresnet18 and rrresnet18
 # training precision
-![alt text](https://github.com/Ela-Boska/Image-Classification/blob/master/statistic/pictures/precision.png
+![alt text](https://github.com/Ela-Boska/Image-Classification/blob/master/statistic/pictures/precision.png)
 ![alt text](https://github.com/Ela-Boska/Image-Classification/blob/master/statistic/pictures/precision_number.png)
 # training loss
 ![alt text](https://github.com/Ela-Boska/Image-Classification/blob/master/statistic/pictures/training_loss.png)
