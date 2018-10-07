@@ -1,5 +1,7 @@
 # Image-Classification
 mini project based on cifar-10
+# Download the data package and put it in this local directory
+https://pan.baidu.com/s/11XVvhuRAQE_oIb0GD4KFpQ
 # Train a series of models
 python main.py cfgfile#1 cfgfile#2 ...
 # Visualize Predicted Samples
