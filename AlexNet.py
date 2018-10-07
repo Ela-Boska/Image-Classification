@@ -12,6 +12,7 @@ transform_test = transforms.Compose([
 ])
 
 def show_sample(model,dataset,num=1,use_cuda=False):
+    fig = plt.figure()
     img = torch.zeros(num,3,32,32)
     labels = [None] * num
     image = [None] * num
@@ -25,9 +26,12 @@ def show_sample(model,dataset,num=1,use_cuda=False):
     names = [dataset.names[class_id] for class_id in class_ids ]
     labels = [dataset.names[label] for label in labels] 
     for i in range(num):
-        print('predicted:',names[i],'truth:',labels[i])
-        plt.imshow(image[i])
-        plt.show()
+        ax = plt.subplot(1,num,i+1)
+        plt.tight_layout()
+        ax.set_title('predicted:{}'.format(names[i])+'\n'+'truth:{}'.format(labels[i]))
+        ax.axis('off')
+        ax.imshow(image[i])
+    plt.show()
 
 def reorgan(inputs,scale=2):
     N,C,H,W = inputs.shape
